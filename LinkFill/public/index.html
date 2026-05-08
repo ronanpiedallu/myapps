@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>LinkFill</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="bg"></div>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <h1>📁 LinkFill</h1>
+
+        <button onclick="location.href='/'">
+            ← Dashboard
+        </button>
+
+    </aside>
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <!-- HEADER -->
+
+        <div class="header">
+
+            <h2>Mes fichiers</h2>
+
+            <label class="upload-btn">
+
+                Upload
+
+                <input
+                type="file"
+                id="fileInput"
+                hidden>
+
+            </label>
+
+        </div>
+
+        <!-- DROP -->
+
+        <div id="drop">
+
+            Glissez un fichier ici
+
+        </div>
+
+        <!-- FILES -->
+
+        <div
+        class="files"
+        id="files">
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Flow</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+
+<div class="bg"></div>
+
+<div class="app">
+
+    <aside class="sidebar">
+
+        <h1>⚡ Flow</h1>
+
+        <button onclick="location.href='/'">
+            ← Dashboard
+        </button>
+
+    </aside>
+
+    <main class="main">
+
+        <div class="messages" id="messages"></div>
+
+        <div class="bottom">
+
+            <input
+            id="input"
+            placeholder="Écrire un message..."
+            >
+
+            <button onclick="send()">
+                ➜
+            </button>
+
+        </div>
+
+        <div id="drop">
+            Glissez un fichier ici
+        </div>
+
+    </main>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

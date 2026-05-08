@@ -1,0 +1,26 @@
+{
+  "name": "myserver",
+  "version": "1.0.0",
+  "description": "Flow + LinkFill",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "flow",
+    "upload",
+    "socketio",
+    "pwa"
+  ],
+  "author": "Ronan",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "git": "^0.1.5",
+    "multer": "^2.1.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.3",
+    "uuid": "^11.1.0"
+  }
+}
