@@ -430,6 +430,137 @@ body{
 
 }
 
+/* =======================
+   AUTH
+======================= */
+
+#authArea {
+
+    position: fixed;
+
+    top: 20px;
+    right: 20px;
+
+    z-index: 1000;
+
+}
+
+#authBtn {
+
+    background: #7b2cff;
+
+    border: none;
+
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 14px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+
+    transition: 0.2s;
+
+}
+
+#authBtn:hover {
+
+    transform: scale(1.05);
+
+}
+
+.modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,0.6);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    z-index: 2000;
+
+}
+
+.hidden {
+    display: none;
+}
+
+.modal-box {
+
+    width: 320px;
+
+    background: #111827;
+
+    border-radius: 24px;
+
+    padding: 30px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+
+    box-shadow:
+    0 0 40px rgba(0,0,0,0.5);
+
+}
+
+.modal-box h2 {
+
+    color: white;
+
+    text-align: center;
+
+}
+
+.modal-box input {
+
+    background: #1f2937;
+
+    border: none;
+
+    padding: 14px;
+
+    border-radius: 12px;
+
+    color: white;
+
+}
+
+.modal-actions {
+
+    display: flex;
+
+    gap: 10px;
+
+}
+
+.modal-actions button {
+
+    flex: 1;
+
+    padding: 12px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: #7b2cff;
+
+    color: white;
+
+    cursor: pointer;
+
+}
+
 </style>
 </head>
 <body>
@@ -705,6 +836,202 @@ body{
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
+</script>
+<!-- AUTH BUTTON -->
+
+<div id="authArea">
+
+    <button id="authBtn">
+        🔐 Login / Register
+    </button>
+
+</div>
+
+<!-- AUTH MODAL -->
+
+<div id="authModal" class="modal hidden">
+
+    <div class="modal-box">
+
+        <h2>Connexion</h2>
+
+        <input
+            id="username"
+            placeholder="Nom d'utilisateur"
+        >
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Mot de passe"
+        >
+
+        <div class="modal-actions">
+
+            <button onclick="login()">
+                Login
+            </button>
+
+            <button onclick="register()">
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const modal =
+document.getElementById("authModal");
+
+const authBtn =
+document.getElementById("authBtn");
+
+// ouvrir popup
+authBtn.onclick = () => {
+
+    modal.classList.remove("hidden");
+
+};
+
+// fermer popup clic extérieur
+modal.onclick = (e) => {
+
+    if(e.target === modal){
+
+        modal.classList.add("hidden");
+
+    }
+
+};
+
+// LOGIN
+async function login(){
+
+    const username =
+    document.getElementById("username").value;
+
+    const password =
+    document.getElementById("password").value;
+
+    const res = await fetch("/login", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+            username,
+            password
+        })
+
+    });
+
+    if(res.ok){
+
+        location.reload();
+
+    } else {
+
+        alert(await res.text());
+
+    }
+
+}
+
+// REGISTER
+async function register(){
+
+    const username =
+    document.getElementById("username").value;
+
+    const password =
+    document.getElementById("password").value;
+
+    const res = await fetch("/register", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+            username,
+            password
+        })
+
+    });
+
+    if(res.ok){
+
+        location.reload();
+
+    } else {
+
+        alert(await res.text());
+
+    }
+
+}
+
+// CHECK USER
+async function checkUser(){
+
+    const res =
+    await fetch("/me");
+
+    const data =
+    await res.json();
+
+    if(data.user){
+
+        authArea.innerHTML = `
+
+            <div style="
+                display:flex;
+                gap:10px;
+                align-items:center;
+            ">
+
+                <span style="
+                    color:white;
+                    font-weight:bold;
+                ">
+                    👤 ${data.user}
+                </span>
+
+                <button
+                    id="authBtn"
+                    onclick="logout()"
+                >
+                    Logout
+                </button>
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+// LOGOUT
+function logout(){
+
+    location.href = "/logout";
+
+}
+
+checkUser();
+
 </script>
 </body>
 </html>
