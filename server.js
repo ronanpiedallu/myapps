@@ -106,6 +106,51 @@ let files = loadJSON(DB_FILE);
 let users = loadJSON(USERS_FILE);
 
 // =========================
+// 👑 CREATE ADMIN
+// =========================
+
+async function createAdmin() {
+
+    if(users["admin"]) return;
+
+    const hashed =
+    await bcrypt.hash(
+        "admin123",
+        10
+    );
+
+    users["admin"] = {
+
+        password: hashed,
+
+        role: "admin"
+
+    };
+
+    saveJSON(
+        USERS_FILE,
+        users
+    );
+
+    console.log(
+        "👑 Admin créé"
+    );
+
+}
+
+createAdmin();
+
+function isAdmin(req){
+
+    return (
+        users[
+            req.session.user
+        ]?.role === "admin"
+    );
+
+}
+
+// =========================
 // 🔐 AUTH MIDDLEWARE
 // =========================
 
@@ -219,9 +264,19 @@ app.get("/logout", (req, res) => {
 
 app.get("/me", (req, res) => {
 
-    res.json({
-        user: req.session.user || null
-    });
+    const username =
+req.session.user;
+
+res.json({
+
+    user: username || null,
+
+    role:
+    username
+    ? users[username]?.role
+    : null
+
+});
 
 });
 
@@ -251,10 +306,24 @@ flowIO.on("connection", (socket) => {
     }
 
     // historique personnel
+    if(
+    users[username]?.role ===
+    "admin"
+){
+
+    socket.emit(
+        "history",
+        messages
+    );
+
+} else {
+
     socket.emit(
         "history",
         messages[username]
     );
+
+}
 
     // nouveau message
     socket.on("send", (data) => {
@@ -460,10 +529,16 @@ app.get(
         Object.entries(files)
             .forEach(([id, file]) => {
 
-                if (
-                    file.owner ===
-                    req.session.user
-                ) {
+               if (
+
+    file.owner ===
+    req.session.user
+
+    ||
+
+    isAdmin(req)
+
+) {
 
                     userFiles[id] = file;
 
@@ -496,9 +571,15 @@ app.delete(
 
         // sécurité
         if (
-            file.owner !==
-            req.session.user
-        ) {
+
+    file.owner !==
+    req.session.user
+
+    &&
+
+    !isAdmin(req)
+
+) {
 
             return res
                 .status(403)

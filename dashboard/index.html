@@ -1005,7 +1005,11 @@ async function checkUser(){
                     color:white;
                     font-weight:bold;
                 ">
-                    👤 ${data.user}
+                    ${data.role === "admin"
+? "👑"
+: "👤"}
+
+${data.user}
                 </span>
 
                 <button
