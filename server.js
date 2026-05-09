@@ -18,7 +18,17 @@ loadJSON(CHECK_FILE);
 const app = express();
 const server = http.createServer(app);
 
-const io = new Server(server);
+const io = new Server(server, {
+
+    cors: {
+
+        origin: true,
+
+        credentials: true
+
+    }
+
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -32,17 +42,28 @@ const USERS_FILE = "users.json";
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Railway proxy HTTPS
+app.set("trust proxy", 1);
+
 const sessionMiddleware = session({
+
     secret: "super-secret-key",
+
     resave: false,
+
     saveUninitialized: false,
+
     cookie: {
-        secure: false
+
+        secure: true,
+
+        sameSite: "none"
+
     }
+
 });
 
 app.use(sessionMiddleware);
-
 // =========================
 // 🔌 SOCKET SESSION SHARE
 // =========================

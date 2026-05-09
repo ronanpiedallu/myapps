@@ -1,6 +1,9 @@
-const socket = io("/flow", {
+const socket = io({
 
-    transports: ["polling", "websocket"],
+    transports: [
+        "polling",
+        "websocket"
+    ],
 
     withCredentials: true
 
