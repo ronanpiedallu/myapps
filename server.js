@@ -293,14 +293,24 @@ const flowIO = io.of("/flow");
 flowIO.on("connection", (socket) => {
 
     const session =
-        socket.request.session;
+        socket.request?.session;
 
-    if (!session.user) {
+    // sécurité anti crash
+    if (
+        !session ||
+        !session.user
+    ) {
+
+        console.log(
+            "❌ Socket sans session"
+        );
+
         return socket.disconnect();
+
     }
 
-    const username = session.user;
-
+    const username =
+        session.user;
     if (!messages[username]) {
         messages[username] = [];
     }
