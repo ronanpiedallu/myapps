@@ -561,6 +561,161 @@ body{
 
 }
 
+/* =========================
+   INFO BUTTON
+========================= */
+
+.info-btn {
+
+    position: absolute;
+
+    top: 15px;
+    right: 15px;
+
+    width: 30px;
+    height: 30px;
+
+    border-radius: 50%;
+
+    border: none;
+
+    background: rgba(255,255,255,0.08);
+
+    color: white;
+
+    cursor: pointer;
+
+    font-weight: bold;
+
+    transition: 0.2s;
+
+}
+
+.info-btn:hover {
+
+    transform: scale(1.1);
+
+    background: #7c3aed;
+
+}
+
+/* IMPORTANT */
+
+.card-content {
+
+    position: relative;
+
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.app-modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,0.7);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    z-index: 9999;
+
+    padding: 20px;
+
+}
+
+.hidden {
+
+    display: none;
+
+}
+
+.app-modal-box {
+
+    width: 100%;
+    max-width: 700px;
+
+    background: #111827;
+
+    border-radius: 24px;
+
+    padding: 25px;
+
+    position: relative;
+
+    animation: pop 0.2s ease;
+
+}
+
+@keyframes pop {
+
+    from {
+
+        opacity: 0;
+        transform: scale(0.9);
+
+    }
+
+    to {
+
+        opacity: 1;
+        transform: scale(1);
+
+    }
+
+}
+
+.app-modal-box img {
+
+    width: 100%;
+
+    border-radius: 18px;
+
+    margin-bottom: 20px;
+
+}
+
+.app-modal-box h2 {
+
+    color: white;
+
+    margin-bottom: 10px;
+
+}
+
+.app-modal-box p {
+
+    color: #cbd5e1;
+
+    line-height: 1.6;
+
+}
+
+.close-btn {
+
+    position: absolute;
+
+    top: 15px;
+    right: 15px;
+
+    background: transparent;
+
+    border: none;
+
+    color: white;
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+}
+
 </style>
 </head>
 <body>
@@ -588,7 +743,7 @@ body{
             class="nav-btn"
             onclick="location.href='/flow'"
         >
-            🔄 Flow
+            💬 Flow
         </button>
 
         <button
@@ -639,6 +794,18 @@ body{
             <div class="card">
 
                 <div class="card-content">
+                 
+                  <!-- BOUTON INFO -->
+        <button
+            class="info-btn"
+            onclick="openModal(
+                'Flow',
+                'Transférez instantanément du texte, des liens et des fichiers entre vos appareils.',
+                '/images/flow.png'
+            )"
+        >
+            i
+        </button>
 
                     <div class="icon">
                         💬
@@ -661,6 +828,18 @@ body{
 
                 <div class="card-content">
 
+                 <!-- BOUTON INFO -->
+        <button
+            class="info-btn"
+            onclick="openModal(
+    'Files',
+    'Hébergez et partagez vos fichiers avec des liens personnalisés et sécurisés pour contourner la limite de taille des fichiers des messageries classiques.',
+    '/images/files.png'
+)"
+        >
+            i
+        </button>
+
                     <div class="icon">
                         📁
                     </div>
@@ -681,6 +860,18 @@ body{
 <div class="card">
 
     <div class="card-content">
+
+     <!-- BOUTON INFO -->
+        <button
+            class="info-btn"
+            onclick="openModal(
+    'Sport-Leveling',
+    'Transformez votre progression sportive en système RPG avec niveaux et XP. Réaliser vos quêtes quotidiennes et devenez plus fort de jours en jours !',
+    '/images/sport.png'
+)"
+        >
+            i
+        </button>
 
         <div class="icon">
             🏋️
@@ -709,6 +900,18 @@ body{
        <div class="card">
 
     <div class="card-content">
+
+      <!-- BOUTON INFO -->
+        <button
+            class="info-btn"
+            onclick="openModal(
+    'Check',
+    'Créez des checklists modernes et synchronisées avec votre compte et tous vos appareils.',
+    '/images/check.png'
+)"
+        >
+            i
+        </button>
 
         <div class="icon">
             ✅
@@ -1068,5 +1271,87 @@ function logout(){
 checkUser();
 
 </script>
+
+<!-- APP MODAL -->
+
+<div
+    id="appModal"
+    class="app-modal hidden"
+>
+
+    <div class="app-modal-box">
+
+        <button
+            class="close-btn"
+            onclick="closeModal()"
+        >
+            ✕
+        </button>
+
+        <img
+            id="modalImage"
+            src=""
+        >
+
+        <h2 id="modalTitle"></h2>
+
+        <p id="modalDescription"></p>
+
+    </div>
+
+</div>
+
+<script>
+
+const appModal =
+document.getElementById(
+    "appModal"
+);
+
+function openModal(
+    title,
+    description,
+    image
+){
+
+    document.getElementById(
+        "modalTitle"
+    ).textContent = title;
+
+    document.getElementById(
+        "modalDescription"
+    ).textContent = description;
+
+    document.getElementById(
+        "modalImage"
+    ).src = image;
+
+    appModal.classList.remove(
+        "hidden"
+    );
+
+}
+
+function closeModal(){
+
+    appModal.classList.add(
+        "hidden"
+    );
+
+}
+
+// fermeture clic extérieur
+appModal.onclick = (e) => {
+
+    if(e.target === appModal){
+
+        closeModal();
+
+    }
+
+};
+
+</script>
+
 </body>
 </html>

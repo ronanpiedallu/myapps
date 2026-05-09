@@ -349,10 +349,10 @@ flowIO.on("connection", (socket) => {
 
         messages[username].push(data);
 
-        flowIO.to(socket.id).emit(
-            "new",
-            data
-        );
+        socket.emit(
+    "new",
+    data
+);
 
     });
 

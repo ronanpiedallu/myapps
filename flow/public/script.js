@@ -1,5 +1,10 @@
-const socket = io("/flow");
+const socket = io("/flow", {
 
+    transports: ["polling", "websocket"],
+
+    withCredentials: true
+
+});
 const messagesDiv = document.getElementById("messages");
 
 function add(msg){
