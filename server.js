@@ -7,6 +7,9 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
+const CHECK_FILE = "checklists.json";
+let checklists =
+loadJSON(CHECK_FILE);
 
 // =========================
 // 🚀 INIT
@@ -55,6 +58,12 @@ io.use((socket, next) => {
 // =========================
 // 📁 STATIC
 // =========================
+app.use(
+    "/check",
+    express.static(
+        path.join(__dirname, "Check/public")
+    )
+);
 
 app.use(
     "/flow",
@@ -608,6 +617,137 @@ app.delete(
         delete files[req.params.id];
 
         saveJSON(DB_FILE, files);
+
+        res.send("Supprimé");
+
+    }
+);
+// =========================
+// ✅ CHECK PAGE
+// =========================
+
+app.get(
+    "/check",
+    requireAuth,
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "Check/public/index.html"
+            )
+        );
+
+    }
+);
+
+app.get(
+    "/api/check",
+    requireAuth,
+    (req, res) => {
+
+        const user =
+        req.session.user;
+
+        if(!checklists[user]){
+
+            checklists[user] = [];
+
+        }
+
+        res.json(
+            checklists[user]
+        );
+
+    }
+);
+app.post(
+    "/api/check",
+    requireAuth,
+    (req, res) => {
+
+        const user =
+        req.session.user;
+
+        if(!checklists[user]){
+
+            checklists[user] = [];
+
+        }
+
+        const task = {
+
+            id: uuidv4(),
+
+            text: req.body.text,
+
+            done: false
+
+        };
+
+        checklists[user].push(task);
+
+        saveJSON(
+            CHECK_FILE,
+            checklists
+        );
+
+        res.json(task);
+
+    }
+);
+app.put(
+    "/api/check/:id",
+    requireAuth,
+    (req, res) => {
+
+        const user =
+        req.session.user;
+
+        const task =
+        checklists[user]
+        ?.find(
+            t => t.id === req.params.id
+        );
+
+        if(!task){
+
+            return res
+            .status(404)
+            .send("Introuvable");
+
+        }
+
+        task.done = !task.done;
+
+        saveJSON(
+            CHECK_FILE,
+            checklists
+        );
+
+        res.json(task);
+
+    }
+);
+
+app.delete(
+    "/api/check/:id",
+    requireAuth,
+    (req, res) => {
+
+        const user =
+        req.session.user;
+
+        checklists[user] =
+        checklists[user]
+        ?.filter(
+            t => t.id !== req.params.id
+        );
+
+        saveJSON(
+            CHECK_FILE,
+            checklists
+        );
 
         res.send("Supprimé");
 
