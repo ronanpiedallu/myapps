@@ -3,208 +3,550 @@ const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 
+// =========================
+// 🚀 INIT
+// =========================
+
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+
 const DB_FILE = "files.json";
+const USERS_FILE = "users.json";
+
+// =========================
+// 📦 JSON / SESSION
+// =========================
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const sessionMiddleware = session({
+    secret: "super-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false
+    }
+});
+
+app.use(sessionMiddleware);
+
+// =========================
+// 🔌 SOCKET SESSION SHARE
+// =========================
+
+io.use((socket, next) => {
+    sessionMiddleware(
+        socket.request,
+        {},
+        next
+    );
+});
 
 // =========================
 // 📁 STATIC
 // =========================
-app.use("/flow", express.static("flow/public"));
-app.use("/uploads", express.static("uploads"));
+
+app.use(
+    "/flow",
+    express.static(
+        path.join(__dirname, "flow/public")
+    )
+);
+
+app.use(
+    "/linkfill",
+    express.static(
+        path.join(__dirname, "LinkFill/public")
+    )
+);
+
+app.use(
+    "/uploads",
+    express.static(
+        path.join(__dirname, "uploads")
+    )
+);
+
+app.use(express.static(__dirname));
 
 // =========================
-// 🔁 FLOW (Socket.io)
+// 💾 DATABASE HELPERS
 // =========================
-const flowIO = io.of("/flow");
 
-let messages = [];
+function loadJSON(file) {
 
-flowIO.on("connection", (socket) => {
-  socket.emit("history", messages);
+    if (!fs.existsSync(file)) {
+        return {};
+    }
 
-  socket.on("send", (data) => {
-    messages.push(data);
-    flowIO.emit("new", data);
-  });
+    return JSON.parse(
+        fs.readFileSync(file)
+    );
+}
+
+function saveJSON(file, data) {
+
+    fs.writeFileSync(
+        file,
+        JSON.stringify(data, null, 2)
+    );
+}
+
+let files = loadJSON(DB_FILE);
+let users = loadJSON(USERS_FILE);
+
+// =========================
+// 🔐 AUTH MIDDLEWARE
+// =========================
+
+function requireAuth(req, res, next) {
+
+    if (!req.session.user) {
+        return res
+            .status(401)
+            .send("Non connecté");
+    }
+
+    next();
+}
+
+// =========================
+// 👤 REGISTER
+// =========================
+
+app.post("/register", async (req, res) => {
+
+    const {
+        username,
+        password
+    } = req.body;
+
+    if (!username || !password) {
+        return res
+            .status(400)
+            .send("Champs manquants");
+    }
+
+    if (users[username]) {
+        return res
+            .status(400)
+            .send("Utilisateur existe déjà");
+    }
+
+    const hashed =
+        await bcrypt.hash(password, 10);
+
+    users[username] = {
+        password: hashed
+    };
+
+    saveJSON(USERS_FILE, users);
+
+    req.session.user = username;
+
+    res.json({
+        success: true,
+        user: username
+    });
+
 });
 
 // =========================
-// 📦 FILES SYSTEM (TON CODE)
+// 🔑 LOGIN
 // =========================
 
-// ====== DATABASE ======
-function loadDB() {
-  if (!fs.existsSync(DB_FILE)) return {};
-  return JSON.parse(fs.readFileSync(DB_FILE));
-}
+app.post("/login", async (req, res) => {
 
-function saveDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-}
+    const {
+        username,
+        password
+    } = req.body;
 
-let files = loadDB();
+    const user = users[username];
 
-// ====== UPLOAD CONFIG ======
+    if (!user) {
+        return res
+            .status(400)
+            .send("Utilisateur inconnu");
+    }
+
+    const valid =
+        await bcrypt.compare(
+            password,
+            user.password
+        );
+
+    if (!valid) {
+        return res
+            .status(400)
+            .send("Mot de passe incorrect");
+    }
+
+    req.session.user = username;
+
+    res.json({
+        success: true,
+        user: username
+    });
+
+});
+
+// =========================
+// 🚪 LOGOUT
+// =========================
+
+app.get("/logout", (req, res) => {
+
+    req.session.destroy(() => {
+        res.redirect("/");
+    });
+
+});
+
+// =========================
+// 👤 CURRENT USER
+// =========================
+
+app.get("/me", (req, res) => {
+
+    res.json({
+        user: req.session.user || null
+    });
+
+});
+
+// =========================
+// 🔁 FLOW SYSTEM
+// =========================
+
+// messages par utilisateur
+let messages = {};
+
+// namespace flow
+const flowIO = io.of("/flow");
+
+flowIO.on("connection", (socket) => {
+
+    const session =
+        socket.request.session;
+
+    if (!session.user) {
+        return socket.disconnect();
+    }
+
+    const username = session.user;
+
+    if (!messages[username]) {
+        messages[username] = [];
+    }
+
+    // historique personnel
+    socket.emit(
+        "history",
+        messages[username]
+    );
+
+    // nouveau message
+    socket.on("send", (data) => {
+
+        messages[username].push(data);
+
+        flowIO.to(socket.id).emit(
+            "new",
+            data
+        );
+
+    });
+
+});
+
+// =========================
+// 📤 MULTER CONFIG
+// =========================
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    const id = uuidv4();
-    const ext = path.extname(file.originalname);
-    cb(null, id + ext);
-  }
+
+    destination: (req, file, cb) => {
+        cb(null, "uploads/");
+    },
+
+    filename: (req, file, cb) => {
+
+        const id = uuidv4();
+
+        const ext =
+            path.extname(
+                file.originalname
+            );
+
+        cb(null, id + ext);
+
+    }
+
 });
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 1024 * 1024 * 1024 }
+
+    storage,
+
+    limits: {
+        fileSize:
+            1024 * 1024 * 1024
+    }
+
 });
 
-// ====== FRONTEND FILES ======
-app.get("/files", (req, res) => {
-  res.send(`
-    <h2>📤 Upload fichier</h2>
-    <form action="/files/upload" method="post" enctype="multipart/form-data">
-      <input type="file" name="file" required />
-      <button>Upload</button>
-    </form>
-    <hr>
-    <h3>📁 Fichiers</h3>
-    <div id="list"></div>
+// =========================
+// 📁 FILES PAGE
+// =========================
 
-    <script>
-      async function loadFiles() {
-        const res = await fetch("/files/list");
-        const data = await res.json();
+app.get(
+    "/files",
+    requireAuth,
+    (req, res) => {
 
-        const container = document.getElementById("list");
-        container.innerHTML = "";
+        res.sendFile(
+            path.join(
+                __dirname,
+                "LinkFill/public/index.html"
+            )
+        );
 
-        Object.entries(data).forEach(([id, file]) => {
-          const link = location.origin + "/files/f/" + id;
+    }
+);
 
-          const div = document.createElement("div");
-          div.innerHTML = \`
-            <p>
-              📄 \${file.originalName} 
-              (<b>\${file.downloads || 0}</b> téléchargements)
-              <br>
-              <a href="\${link}" target="_blank">\${link}</a>
-              <br>
-              <button onclick="copy('\${link}')">Copier</button>
-              <button onclick="del('\${id}')">Supprimer</button>
-            </p>
-            <hr>
-          \`;
-          container.appendChild(div);
+// =========================
+// 📤 FLOW FILE UPLOAD
+// =========================
+
+app.post(
+    "/flow/upload",
+    requireAuth,
+    upload.single("file"),
+    (req, res) => {
+
+        const username =
+            req.session.user;
+
+        const fileData = {
+
+            type: "file",
+
+            name:
+                req.file.originalname,
+
+            url:
+                "/uploads/" +
+                req.file.filename
+
+        };
+
+        if (!messages[username]) {
+            messages[username] = [];
+        }
+
+        messages[username].push(
+            fileData
+        );
+
+        flowIO.emit(
+            "new",
+            fileData
+        );
+
+        res.json({
+            success: true
         });
-      }
 
-      function copy(text) {
-        navigator.clipboard.writeText(text);
-        alert("Lien copié !");
-      }
+    }
+);
 
-      async function del(id) {
-        await fetch("/files/delete/" + id, { method: "DELETE" });
-        loadFiles();
-      }
+// =========================
+// 📤 FILES UPLOAD
+// =========================
 
-      loadFiles();
-    </script>
-  `);
-});
+app.post(
+    "/files/upload",
+    requireAuth,
+    upload.single("file"),
+    (req, res) => {
 
-// ====== UPLOAD ======
-app.post("/flow/upload", upload.single("file"), (req, res) => {
-  const fileData = {
-    type: "file",
-    name: req.file.originalname,
-    url: "/uploads/" + req.file.filename
-  };
+        const fileId =
+            path.parse(
+                req.file.filename
+            ).name;
 
-  messages.push(fileData);
-  io.of("/flow").emit("new", fileData);
+        files[fileId] = {
 
-  res.json({ success: true });
-});
+            path: req.file.path,
 
-app.post("/files/upload", upload.single("file"), (req, res) => {
-  const fileId = path.parse(req.file.filename).name;
+            originalName:
+                req.file.originalname,
 
-  files[fileId] = {
-    path: req.file.path,
-    originalName: req.file.originalname,
-    downloads: 0
-  };
+            downloads: 0,
 
-  saveDB(files);
+            owner:
+                req.session.user
 
-  const link = `${req.protocol}://${req.get("host")}/files/f/${fileId}`;
+        };
 
-  res.send(`
-    <p>✅ Upload réussi</p>
-    <a href="${link}">${link}</a>
-    <br><br>
-    <a href="/files">⬅ Retour</a>
-  `);
-});
+        saveJSON(DB_FILE, files);
 
-// ====== DOWNLOAD ======
-app.get("/files/f/:id", (req, res) => {
-  const file = files[req.params.id];
+        const link =
+            `${req.protocol}://${req.get("host")}/files/f/${fileId}`;
 
-  if (!file) return res.status(404).send("Fichier introuvable");
+        res.json({
+            success: true,
+            link
+        });
 
-  file.downloads++;
-  saveDB(files);
+    }
+);
 
-  res.setHeader("Content-Disposition", `attachment; filename="${file.originalName}"`);
-  res.sendFile(path.resolve(file.path));
-});
+// =========================
+// 📥 DOWNLOAD
+// =========================
 
-// ====== LISTE ======
-app.get("/files/list", (req, res) => {
-  res.json(files);
-});
+app.get(
+    "/files/f/:id",
+    (req, res) => {
 
-// ====== DELETE ======
-app.delete("/files/delete/:id", (req, res) => {
-  const file = files[req.params.id];
+        const file =
+            files[req.params.id];
 
-  if (!file) return res.status(404).send("Introuvable");
+        if (!file) {
+            return res
+                .status(404)
+                .send("Introuvable");
+        }
 
-  fs.unlinkSync(file.path);
-  delete files[req.params.id];
+        file.downloads++;
 
-  saveDB(files);
+        saveJSON(DB_FILE, files);
 
-  res.send("Supprimé");
-});
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${file.originalName}"`
+        );
+
+        res.sendFile(
+            path.resolve(file.path)
+        );
+
+    }
+);
+
+// =========================
+// 📃 FILES LIST
+// =========================
+
+app.get(
+    "/files/list",
+    requireAuth,
+    (req, res) => {
+
+        const userFiles = {};
+
+        Object.entries(files)
+            .forEach(([id, file]) => {
+
+                if (
+                    file.owner ===
+                    req.session.user
+                ) {
+
+                    userFiles[id] = file;
+
+                }
+
+            });
+
+        res.json(userFiles);
+
+    }
+);
+
+// =========================
+// 🗑 DELETE FILE
+// =========================
+
+app.delete(
+    "/files/delete/:id",
+    requireAuth,
+    (req, res) => {
+
+        const file =
+            files[req.params.id];
+
+        if (!file) {
+            return res
+                .status(404)
+                .send("Introuvable");
+        }
+
+        // sécurité
+        if (
+            file.owner !==
+            req.session.user
+        ) {
+
+            return res
+                .status(403)
+                .send("Interdit");
+
+        }
+
+        if (
+            fs.existsSync(file.path)
+        ) {
+
+            fs.unlinkSync(file.path);
+
+        }
+
+        delete files[req.params.id];
+
+        saveJSON(DB_FILE, files);
+
+        res.send("Supprimé");
+
+    }
+);
 
 // =========================
 // 🏠 HOME
 // =========================
+
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "dashboard", "index.html"));
+
+    res.sendFile(
+        path.join(
+            __dirname,
+            "dashboard",
+            "index.html"
+        )
+    );
+
 });
+
 // =========================
 // 🚀 START
 // =========================
-app.use(
-  "/linkfill",
-  express.static(path.join(__dirname, "LinkFill", "public"))
-);
-app.use(express.static(__dirname));
-server.listen(PORT, () => {
-  console.log("http://localhost:" + PORT);
-});
 
+server.listen(PORT, () => {
+
+    console.log(
+        "🚀 http://localhost:" + PORT
+    );
+
+});
